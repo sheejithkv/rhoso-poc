@@ -11,9 +11,9 @@ metadata:
   namespace: openshift-marketplace
 spec:
   sourceType: grpc
-  image: quay-mirror.CHANGE_ME.example.com:8443/redhat/redhat-operator-index:v4.18
+  image: __MIRROR_REGISTRY_HOST__:8443/redhat/redhat-operator-index:v4.18
   displayName: "RHOSO Disconnected Mirror Catalog"
-  publisher: "CHANGE_ME - your org"
+  publisher: "__ORG_NAME__"
   updateStrategy:
     registryPoll:
       interval: 30m

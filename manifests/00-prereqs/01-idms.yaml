@@ -17,13 +17,13 @@ spec:
   imageDigestMirrors:
     - source: registry.redhat.io/rhoso
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/rhoso
+        - __MIRROR_REGISTRY_HOST__:8443/rhoso
     - source: registry.redhat.io/openstack-kubernetes
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/openstack-kubernetes
+        - __MIRROR_REGISTRY_HOST__:8443/openstack-kubernetes
     - source: registry.redhat.io/rhceph
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/rhceph
+        - __MIRROR_REGISTRY_HOST__:8443/rhceph
     - source: registry.redhat.io/redhat/redhat-operator-index
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/redhat/redhat-operator-index
+        - __MIRROR_REGISTRY_HOST__:8443/redhat/redhat-operator-index

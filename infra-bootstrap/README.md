@@ -37,8 +37,11 @@ Everything here is a **one-time, per-environment** setup. It is intentionally se
 phase is already done (that's why `00-prereqs-check.sh` starts by checking the mirror is
 reachable rather than creating it).
 
-All hostnames below are `CHANGE_ME` - search for it:
+Every hostname/org/path below is a `__TOKEN__` placeholder or `CHANGE_ME` comment. Run
+`python3 ../scripts/configure.py` from the repo root before running anything in this directory -
+it fills these in (and the passwords these scripts need go in `.rhoso-poc-secrets.env`, which
+that wizard also writes - `source` it first). Prefer to do it by hand instead?
 
 ```bash
-grep -rn "CHANGE_ME" .
+grep -rn "CHANGE_ME\|__[A-Z_]*__" .
 ```

@@ -11,7 +11,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-    - 10.10.10.80-10.10.10.90   # CHANGE_ME
+    - __METALLB_POOL_RANGE__
   autoAssign: true
 ---
 apiVersion: metallb.io/v1beta1

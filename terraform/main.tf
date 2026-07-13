@@ -36,15 +36,16 @@ module "baremetal_node" {
 resource "local_file" "install_config" {
   filename = "${path.module}/generated/install-config.yaml"
   content = templatefile("${path.module}/templates/install-config.yaml.tmpl", {
-    cluster_name  = var.cluster_name
-    base_domain   = var.base_domain
-    pull_secret   = file(var.pull_secret_path)
-    ssh_key       = file(var.ssh_public_key_path)
-    api_vip       = var.network.api_vip
-    ingress_vip   = var.network.ingress_vip
-    machine_cidr  = var.network.machine_network_cidr
-    registry_host = var.disconnected_registry.host
-    registry_port = var.disconnected_registry.port
+    cluster_name   = var.cluster_name
+    base_domain    = var.base_domain
+    pull_secret    = file(var.pull_secret_path)
+    ssh_key        = file(var.ssh_public_key_path)
+    api_vip        = var.network.api_vip
+    ingress_vip    = var.network.ingress_vip
+    machine_cidr   = var.network.machine_network_cidr
+    registry_host  = var.disconnected_registry.host
+    registry_port  = var.disconnected_registry.port
+    mirror_ca_cert = file(var.disconnected_registry.ca_cert_path)
   })
 }
 

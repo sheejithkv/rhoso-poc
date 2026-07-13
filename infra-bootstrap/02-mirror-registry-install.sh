@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WHAT: Installs "mirror registry for Red Hat OpenShift" - a small, self-contained Quay
 #       instance whose only job is to hold the OCP release + operator-catalog + RHOSO images
-#       for a disconnected install. This is the registry every quay-mirror.CHANGE_ME.example.com
+#       for a disconnected install. This is the registry every __MIRROR_REGISTRY_HOST__
 #       reference in manifests/00-prereqs/ points at.
 # WHAT THIS IS NOT: a production/HA registry. Red Hat explicitly scopes this tool to bootstrap
 #       content only (local filesystem storage, single node). If you already run Quay/Artifactory/
@@ -15,7 +15,7 @@
 # ROLLBACK: ./mirror-registry uninstall -v --quayRoot <same --quayRoot value used at install>
 set -euo pipefail
 
-REGISTRY_HOSTNAME="quay-mirror.CHANGE_ME.example.com"
+REGISTRY_HOSTNAME="__MIRROR_REGISTRY_HOST__"
 QUAY_ROOT="${HOME}/quay-install"
 
 echo "== Extracting mirror-registry tool =="

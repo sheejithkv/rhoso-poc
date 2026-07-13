@@ -10,11 +10,11 @@
 #           hammer content-view delete --name "${CV_NAME}" --organization "${ORG}"
 set -euo pipefail
 
-ORG="CHANGE_ME_Org"
-MANIFEST_ZIP="CHANGE_ME/manifest_rhoso-poc.zip"   # downloaded from console.redhat.com > Subscriptions > Manifests
+ORG="__ORG_NAME__"
+MANIFEST_ZIP="__SATELLITE_MANIFEST_ZIP_PATH__"   # downloaded from console.redhat.com > Subscriptions > Manifests
 LCE_NAME="RHOSO-POC"
 CV_NAME="rhoso-poc-cv"
-AK_NAME="rhoso-poc-edpm-key"
+AK_NAME="__SATELLITE_ACTIVATION_KEY__"
 
 echo "== [1/6] Creating organization (skip if it already exists) =="
 hammer organization create --name "${ORG}" --label "${ORG}" 2>/dev/null || true

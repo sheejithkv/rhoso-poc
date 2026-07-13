@@ -1,4 +1,10 @@
-# Copy to terraform.tfvars and fill in every CHANGE_ME value.
+# RECOMMENDED: run `python3 ../scripts/configure.py` from the repo root instead of hand-editing
+# this file - it asks for every value below once, keeps the ones that must match each other
+# (e.g. the Compute node's MACs vs manifests/05-data-plane/02-nodeset-compute.yaml) in sync by
+# construction, and writes terraform.tfvars directly.
+#
+# Prefer to do this by hand instead? Copy this file to terraform.tfvars and fill in every
+# CHANGE_ME value yourself - configure.py's own output uses the same schema.
 # NEVER commit terraform.tfvars (it can hold BMC credentials) - it is already in .gitignore.
 
 cluster_name       = "rhoso-poc"                # CHANGE_ME

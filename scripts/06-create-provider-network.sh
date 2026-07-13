@@ -3,10 +3,14 @@
 #       router commands assume already exists. THIS WAS ENTIRELY MISSING from the original repo -
 #       the smoke test referenced a `public` network in `openstack router set --external-gateway
 #       public` and `openstack floating ip create public`, but nothing anywhere created it.
-# HOW THIS MAPS TO THE UNDERLYING BRIDGE: `--provider-physical-network datacentre` matches the
-#       `edpm_ovn_bridge_mappings: ["datacentre:br-ex"]` set on the Compute node in
-#       manifests/05-data-plane/02-nodeset-compute.yaml, and `--provider-segment 30` matches that
-#       same file's br-ex/bond0.30 VLAN. If you change one, change all three.
+# HOW THIS MAPS TO THE UNDERLYING BRIDGE: `--provider-physical-network` matches the
+#       `edpm_ovn_bridge_mappings` set on the Compute node in
+#       manifests/05-data-plane/02-nodeset-compute.yaml, and `--provider-segment` matches that
+#       same file's br-ex/bond0.<vlan> VLAN. If you change one, change all three (this script,
+#       scripts/configure.py's __EXTERNAL_PHYSNET__/__EXTERNAL_VLAN_ID__ tokens, and that file).
+#       The subnet (__EXTERNAL_SUBNET_CIDR__) is this script's own concern only - it isn't in
+#       manifests/02-networking/02-netconfig.yaml, since that CRD's IPAM is for EDPM/OCP node and
+#       pod addressing, not Neutron's own floating-IP subnet.
 # WHAT THIS DOES NOT GIVE YOU: without a real upstream router/uplink physically connected to
 #       that VLAN, floating IPs are allocated and attach/detach correctly (enough to demonstrate
 #       and test the control-plane path end-to-end) but will not reach the public internet - see
@@ -16,13 +20,13 @@
 #           oc rsh -n openstack openstackclient openstack network delete public
 set -euo pipefail
 
-PHYSNET="datacentre"      # CHANGE_ME - must match edpm_ovn_bridge_mappings in 02-nodeset-compute.yaml
-SEGMENT="30"                # CHANGE_ME - must match the VLAN id used for bond0.30/br-ex there
-SUBNET_CIDR="10.20.20.0/24" # CHANGE_ME - matches manifests/02-networking/02-netconfig.yaml's "external" note
-ALLOCATION_START="10.20.20.100"
-ALLOCATION_END="10.20.20.200"
-GATEWAY="10.20.20.1"        # CHANGE_ME - your real upstream router IP if you have one, else leave
-                             # as a placeholder (floating IPs stay local to this VLAN - see header)
+PHYSNET="__EXTERNAL_PHYSNET__"      # must match edpm_ovn_bridge_mappings in 02-nodeset-compute.yaml
+SEGMENT="__EXTERNAL_VLAN_ID__"      # must match the VLAN id used for bond0.<id>/br-ex there
+SUBNET_CIDR="__EXTERNAL_SUBNET_CIDR__"
+ALLOCATION_START="__EXTERNAL_ALLOCATION_START__"
+ALLOCATION_END="__EXTERNAL_ALLOCATION_END__"
+GATEWAY="__EXTERNAL_GATEWAY__"        # your real upstream router IP if you have one, else a
+                             # placeholder is fine (floating IPs stay local to this VLAN - see header)
 
 oc rsh -n openstack openstackclient openstack network create public \
   --external \

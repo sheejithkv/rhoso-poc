@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # WHAT: Merges your registry.redhat.io + internal mirror auth into the cluster-wide pull secret.
 #       Without this, kubelet on every node can authenticate to registry.redhat.io fine but has
-#       no credentials for quay-mirror.CHANGE_ME.example.com, so any image the IDMS/ITMS redirect
+#       no credentials for __MIRROR_REGISTRY_HOST__, so any image the IDMS/ITMS redirect
 #       there (i.e. everything, in a disconnected install) fails to pull with ImagePullBackOff.
 # WHAT CHANGED: this script existed before but nothing ever called it - see scripts/00-prereqs-check.sh,
 #       which now runs it right after applying the IDMS/ITMS/CatalogSource.
 # VERIFY: oc get secret/pull-secret -n openshift-config -o json | jq -r '.data.".dockerconfigjson"' | base64 -d | jq '.auths | keys'
 set -euo pipefail
-MIRROR_AUTH_FILE="${MIRROR_AUTH_FILE:-CHANGE_ME/mirror-auth.json}"
+MIRROR_AUTH_FILE="${MIRROR_AUTH_FILE:-__MIRROR_AUTH_FILE_PATH__}"
 
 if [ ! -f "${MIRROR_AUTH_FILE}" ]; then
   echo "ERROR: ${MIRROR_AUTH_FILE} not found." >&2

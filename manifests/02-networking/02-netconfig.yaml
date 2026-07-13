@@ -28,16 +28,16 @@ metadata:
 spec:
   networks:
     - name: ctlplane
-      dnsDomain: ctlplane.CHANGE_ME.example.com
+      dnsDomain: ctlplane.__BASE_DOMAIN__
       subnets:
         - name: subnet1
-          cidr: 10.10.10.0/24     # CHANGE_ME - must match terraform's network.machine_network_cidr
-          gateway: 10.10.10.1      # CHANGE_ME
+          cidr: __MACHINE_NETWORK_CIDR__     # must match terraform's network.machine_network_cidr
+          gateway: __GATEWAY__
           allocationRanges:
             - start: 10.10.10.50
               end: 10.10.10.59
     - name: internalapi
-      dnsDomain: internalapi.CHANGE_ME.example.com
+      dnsDomain: internalapi.__BASE_DOMAIN__
       subnets:
         - name: subnet1
           cidr: 172.17.0.0/24
@@ -46,7 +46,7 @@ spec:
             - start: 172.17.0.100
               end: 172.17.0.250
     - name: storage
-      dnsDomain: storage.CHANGE_ME.example.com
+      dnsDomain: storage.__BASE_DOMAIN__
       subnets:
         - name: subnet1
           cidr: 172.18.0.0/24
@@ -55,7 +55,7 @@ spec:
             - start: 172.18.0.100
               end: 172.18.0.250
     - name: tenant
-      dnsDomain: tenant.CHANGE_ME.example.com
+      dnsDomain: tenant.__BASE_DOMAIN__
       subnets:
         - name: subnet1
           cidr: 172.19.0.0/24

@@ -36,8 +36,10 @@ for supportability (e.g. 3 control plane nodes), that minimum is kept even in th
 | Provider/floating-IP network | `public`, VLAN 30 on a dedicated OVS bridge (`br-ex`) | `scripts/06-create-provider-network.sh` |
 | Test image | Cirros (fast smoke test) — swap for RHEL qcow2 for real workloads | `scripts/07-smoke-test.sh` |
 
-Every value you must personally set is tagged `CHANGE_ME` in the files. Search for it from the
-repo root:
+Every value you must personally set is tagged `CHANGE_ME` in the files, or (for anything with
+real cross-file dependencies - the same hostname, UUID, or MAC needing to match in several
+places) an `__ALL_CAPS_TOKEN__` placeholder. **Run the configuration wizard instead of hand-editing
+these** - see section 2 below.
 
 ```bash
 grep -rn "CHANGE_ME" . | wc -l
@@ -46,7 +48,34 @@ grep -rln "CHANGE_ME" .
 
 ---
 
-## 2. Repository layout
+## 2. Configure once: `scripts/configure.py`
+
+```bash
+python3 scripts/configure.py
+```
+
+Asks for every environment-specific value this repo needs (domain, org, network, one prompt per
+node, Satellite, mirror registry, Ceph, provider network, credentials) and then:
+
+- writes a complete `terraform/terraform.tfvars` (not just filling in the `.example`)
+- replaces every `__TOKEN__` placeholder across `manifests/`, `scripts/`, and `infra-bootstrap/`
+  with the matching answer - so the Compute node's NIC MACs, the Ceph RBD secret UUID, the
+  mirror registry hostname, and everything else that has to match across multiple files only
+  gets entered once and can't drift out of sync
+- writes `.rhoso-poc-secrets.env` (gitignored, `chmod 600`) for the handful of real passwords
+  (Satellite admin, Ceph dashboard, mirror registry) - these are **never** written into any
+  tracked file, even by this wizard; `source` that file before running the scripts that need them
+- writes `.rhoso-poc-config.json` (gitignored) so re-running the wizard later offers your
+  previous answers as defaults instead of starting over
+
+Safe to re-run any time - answers are remembered, and every substitution is idempotent. What it
+does *not* do: a small number of remaining `CHANGE_ME` comments are judgment calls, not blanks
+(confirm an OLM channel name, enable Swift or not, HA vs. POC replica counts) - the wizard prints
+these at the end of its run rather than guessing.
+
+---
+
+## 3. Repository layout
 
 ```
 rhoso-poc/
@@ -73,6 +102,7 @@ rhoso-poc/
 │   ├── 04-control-plane/           osp-secret + ceph-conf-files secret + OpenStackControlPlane CR
 │   └── 05-data-plane/              subscription secrets + OpenStackDataPlaneNodeSet + Deployment
 ├── scripts/                      <- orchestration wrapper (idempotent, validates each step)
+│   ├── configure.py               <- run this FIRST: interactive config wizard (see section 2)
 │   ├── deploy-all.sh              <- runs everything in order end to end, or --teardown
 │   ├── lib/common.sh              <- shared helpers (Manual InstallPlan approval, CSV waits)
 │   ├── 00-prereqs-check.sh
@@ -90,7 +120,7 @@ rhoso-poc/
 
 ---
 
-## 3. Before Terraform: infra-bootstrap
+## 4. Before Terraform: infra-bootstrap
 
 Satellite (RPM content for the RHEL Compute node) and the mirror registry (OCI images for OCP +
 RHOSO) both need to exist *before* you provision anything else — the disconnected OpenShift
@@ -111,7 +141,7 @@ hostnames/credentials into `terraform.tfvars` and `manifests/05-data-plane/00-su
 
 ---
 
-## 4. How Terraform feeds OpenShift install
+## 5. How Terraform feeds OpenShift install
 
 `terraform apply` provisions every node (3x master + N x worker, each with **two bonded NICs**)
 and writes two files via `local_file` resources:
@@ -157,7 +187,7 @@ network path to actually run `terraform init`/`apply` against real infrastructur
 
 ---
 
-## 5. Order of execution (after the cluster is up)
+## 6. Order of execution (after the cluster is up)
 
 ```bash
 export KUBECONFIG=$(pwd)/terraform/generated/auth/kubeconfig   # run from repo root
@@ -182,7 +212,7 @@ re-entering the procedure midway.
 
 ---
 
-## 6. Rollback
+## 7. Rollback
 
 Every manifest folder has a matching delete command in its own comments, and
 `scripts/deploy-all.sh --teardown` runs all of them in reverse order — this now actually reaches
@@ -200,7 +230,7 @@ actually mean to.
 
 ---
 
-## 7. Full written procedure
+## 8. Full written procedure
 
 See the numbered manifests and scripts themselves — each file is preceded by a comment block in
 this format:

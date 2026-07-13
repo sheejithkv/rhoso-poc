@@ -10,7 +10,7 @@
 # PREREQS (manual, one-time, per Red Hat account):
 #   1. A RHEL 9 host/VM sized per Red Hat sizing guide (POC minimum: 4 vCPU / 32GB RAM / 300GB disk).
 #   2. A subscription manifest downloaded from https://console.redhat.com/insights/connector/activation-keys
-#      (Subscriptions > Manifests) as a .zip - CHANGE_ME path below.
+#      (Subscriptions > Manifests) as a .zip - the path goes in 01-satellite-content.sh, not here.
 #   3. DNS: this host's FQDN must resolve (forward AND reverse) before satellite-installer runs.
 # VERIFY: hammer ping   (all services should report "ok")
 #         systemctl status satellite --no-pager | grep -i active
@@ -18,10 +18,11 @@
 #           here on purpose - Satellite removal is destructive and organization-specific.
 set -euo pipefail
 
-SATELLITE_FQDN="CHANGE_ME.satellite.example.com"   # must match forward+reverse DNS
-SATELLITE_ORG="CHANGE_ME_Org"
-SATELLITE_ADMIN_PASSWORD="CHANGE_ME"               # do not commit a real value - export via env instead:
-                                                    #   SATELLITE_ADMIN_PASSWORD=$(cat /run/secrets/sat_admin) bash 00-satellite-install.sh
+SATELLITE_FQDN="__SATELLITE_FQDN__"   # must match forward+reverse DNS
+SATELLITE_ORG="__ORG_NAME__"
+# Never hardcoded, even by scripts/configure.py: export SATELLITE_ADMIN_PASSWORD before running
+# this script, or source .rhoso-poc-secrets.env (written by scripts/configure.py, gitignored).
+SATELLITE_ADMIN_PASSWORD="${SATELLITE_ADMIN_PASSWORD:-CHANGE_ME}"
 
 echo "== [1/4] Registering this host and enabling the Satellite 6.16 repos =="
 # CHANGE_ME: if this host is itself air-gapped, mirror these repos in first (reposync from a

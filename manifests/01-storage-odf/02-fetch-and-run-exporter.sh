@@ -13,8 +13,8 @@
 # ROLLBACK: oc delete secret rook-ceph-external-cluster-details -n openshift-storage
 set -euo pipefail
 
-CEPH_ADMIN_HOST="CHANGE_ME"   # the host infra-bootstrap/04-ceph-cluster-bootstrap.sh ran on
-RBD_POOL="volumes"            # CHANGE_ME if you used a different Cinder pool name
+CEPH_ADMIN_HOST="__CEPH_MON_IP__"   # the host infra-bootstrap/04-ceph-cluster-bootstrap.sh ran on
+RBD_POOL="volumes"            # matches the pool infra-bootstrap/04-ceph-cluster-bootstrap.sh creates
 RGW_ENDPOINT=""                # CHANGE_ME - leave empty if not using RGW/Swift-alternative
 
 echo "== [1/3] Fetching the exporter script matching your installed ODF CSV =="

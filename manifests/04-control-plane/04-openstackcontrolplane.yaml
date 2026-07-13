@@ -119,12 +119,13 @@ spec:
             volume_driver=cinder.volume.drivers.rbd.RBDDriver
             rbd_ceph_conf=/etc/ceph/ceph.conf
             rbd_user=openstack             # matches infra-bootstrap/04-ceph-cluster-bootstrap.sh's client.openstack
-            rbd_pool=volumes               # CHANGE_ME - must exist on the external Ceph cluster
+            rbd_pool=volumes               # matches the pool infra-bootstrap/04-ceph-cluster-bootstrap.sh creates
             rbd_flatten_volume_from_snapshot=false
-            rbd_secret_uuid=CHANGE_ME_UUID # CHANGE_ME - generate once with `uuidgen`, then use the
-            # SAME value for edpm_nova_libvirt_secret_uuid in
-            # manifests/05-data-plane/02-nodeset-compute.yaml - Nova/libvirt on the Compute node
-            # authenticates to Ceph with this UUID when attaching a Cinder-created RBD volume to a VM.
+            rbd_secret_uuid=__CEPH_RBD_SECRET_UUID__
+            # auto-generated once by scripts/configure.py and reused verbatim for
+            # edpm_nova_libvirt_secret_uuid in manifests/05-data-plane/02-nodeset-compute.yaml -
+            # Nova/libvirt on the Compute node authenticates to Ceph with this UUID when
+            # attaching a Cinder-created RBD volume to a VM.
 
   nova:
     template:

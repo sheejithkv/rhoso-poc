@@ -17,15 +17,18 @@
 # ROLLBACK: cephadm rm-cluster --fsid $(cephadm shell -- ceph fsid) --force
 set -euo pipefail
 
-MON_IP="CHANGE_ME"                 # this host's IP on the storage network
-CLUSTER_HOSTS=("CHANGE_ME-ceph1")  # CHANGE_ME - additional hosts to add via `ceph orch host add`; POC can be just this one
-DATA_DEVICE="CHANGE_ME"            # e.g. /dev/sdb - must be a raw, unused block device
+MON_IP="__CEPH_MON_IP__"                 # this host's IP on the storage network
+CLUSTER_HOSTS=("__CEPH_CLUSTER_HOSTS__")  # additional hosts to add via `ceph orch host add`; POC can be just this one
+DATA_DEVICE="__CEPH_DATA_DEVICE__"            # e.g. /dev/sdb - must be a raw, unused block device
+# Never hardcoded, even by scripts/configure.py: export CEPH_DASHBOARD_PASSWORD before running
+# this script, or source .rhoso-poc-secrets.env (written by scripts/configure.py, gitignored).
+CEPH_DASHBOARD_PASSWORD="${CEPH_DASHBOARD_PASSWORD:-CHANGE_ME}"
 
 echo "== [1/5] Installing cephadm =="
 dnf install -y cephadm
 
 echo "== [2/5] Bootstrapping the cluster (mon+mgr on this host) =="
-cephadm bootstrap --mon-ip "${MON_IP}" --initial-dashboard-password "CHANGE_ME" --dashboard-password-noupdate
+cephadm bootstrap --mon-ip "${MON_IP}" --initial-dashboard-password "${CEPH_DASHBOARD_PASSWORD}" --dashboard-password-noupdate
 
 echo "== [3/5] Adding OSD(s) =="
 cephadm shell -- ceph orch apply osd --all-available-devices || \

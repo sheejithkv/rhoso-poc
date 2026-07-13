@@ -11,11 +11,13 @@
 set -euo pipefail
 NAMESPACE=openstack
 
-SATELLITE_ORG="CHANGE_ME_Org"                       # matches infra-bootstrap/01-satellite-content.sh
-SATELLITE_ACTIVATION_KEY="rhoso-poc-edpm-key"        # matches infra-bootstrap/01-satellite-content.sh's AK_NAME
+SATELLITE_ORG="__ORG_NAME__"                       # matches infra-bootstrap/01-satellite-content.sh
+SATELLITE_ACTIVATION_KEY="__SATELLITE_ACTIVATION_KEY__"        # matches infra-bootstrap/01-satellite-content.sh's AK_NAME
 MIRROR_REGISTRY_USER="init"                          # matches infra-bootstrap/02-mirror-registry-install.sh
-MIRROR_REGISTRY_PASSWORD="CHANGE_ME"                 # printed by that script's install output
-MIRROR_REGISTRY_HOST="quay-mirror.CHANGE_ME.example.com:8443"
+# Never hardcoded, even by scripts/configure.py: export MIRROR_REGISTRY_PASSWORD before running
+# this script, or source .rhoso-poc-secrets.env (written by scripts/configure.py, gitignored).
+MIRROR_REGISTRY_PASSWORD="${MIRROR_REGISTRY_PASSWORD:-CHANGE_ME}"
+MIRROR_REGISTRY_HOST="__MIRROR_REGISTRY_HOST__:8443"
 
 # rhc_auth expects an activation-key login, not a username/password, when registering against
 # Satellite - subscription-manager on the EDPM node will use org + activationkey.

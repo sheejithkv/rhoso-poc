@@ -13,7 +13,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-REGISTRY="quay-mirror.CHANGE_ME.example.com:8443/mirror"
+REGISTRY="__MIRROR_REGISTRY_HOST__:8443/mirror"
 
 echo "== oc-mirror v2: mirror to disk then disk to mirror =="
 echo "-> requires internet access from THIS host; the target registry does not need it"

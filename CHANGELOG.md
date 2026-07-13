@@ -144,6 +144,40 @@ found along the way. Each entry names the actual file(s) changed.
   `libvirt` resource types to the nonexistent `hashicorp/` namespace instead of `dell/` and
   `dmacvicar/`. Fixed with a new `modules/baremetal_node/versions.tf`.
 
+## Follow-up addition: `scripts/configure.py`
+
+152 `CHANGE_ME` sites across 30 files is a lot to fill in by hand, and several of them have to
+stay identical across multiple files (the Compute node's NIC MACs between `terraform.tfvars` and
+`manifests/05-data-plane/02-nodeset-compute.yaml`; the Ceph RBD secret UUID between that same
+file and `manifests/04-control-plane/04-openstackcontrolplane.yaml`; the mirror registry hostname
+across a dozen files) - exactly the kind of thing that's easy to get subtly wrong by manual
+copy-paste. `scripts/configure.py` is an interactive wizard that asks for each distinct value
+once and applies it everywhere it's needed:
+
+- Every ad-hoc `CHANGE_ME` that represented a real blank (not a judgment call) was converted to a
+  unique `__TOKEN__` placeholder across `manifests/`, `scripts/`, and `infra-bootstrap/`, so
+  substitution is exact rather than guessing which of many identical `CHANGE_ME` strings on a
+  page means what.
+- `terraform.tfvars` is generated fresh (not token-substituted) since it's structured HCL with a
+  variable-length node list - easier and safer to emit correctly from scratch than to
+  text-replace into a list-of-objects.
+- Passwords (Satellite admin, Ceph dashboard, mirror registry) are **never** written into any
+  tracked file, even by this wizard - they go into a separate `.rhoso-poc-secrets.env`
+  (gitignored, `chmod 600`), and the three scripts that need them were changed from hardcoding
+  `VAR="CHANGE_ME"` to `VAR="${VAR:-CHANGE_ME}"` so an exported/sourced value overrides cleanly
+  without ever needing the tracked script file itself to hold a real credential.
+- Validated end-to-end against a real interactive run (simulated stdin) for both `platform_mode`
+  branches that differ meaningfully (`libvirt`: auto-generates node MACs, skips BMC prompts;
+  `redfish`: requires real MACs + BMC address/username/password per node) - not just read for
+  plausibility. The generated `terraform.tfvars` was additionally checked against
+  `variables.tf`'s actual `type` constraints and `validation` blocks using the same real OpenTofu
+  binary from the earlier Terraform validation pass, and the rendered `additionalTrustBundle` CA
+  cert embedding in `install-config.yaml.tmpl` was verified to produce valid YAML.
+- Safe to re-run: answers are cached in `.rhoso-poc-config.json` (gitignored, no secrets) and
+  offered as defaults on the next run, so changing one value doesn't mean re-typing everything.
+
+
+
 ## Explicit scope decisions (not bugs — deliberate POC simplifications)
 
 - **RHOSO's full default network set is 6 networks** (Ctlplane, InternalApi, Storage,

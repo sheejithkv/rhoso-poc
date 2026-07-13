@@ -35,8 +35,8 @@ imageContentSources:
     mirrors:
       - ${registry_host}:${registry_port}/redhat/redhat-operator-index
 additionalTrustBundle: |
-  # CHANGE_ME: paste the mirror registry's CA here, e.g.:
-  #   cat ~/quay-install/quay-rootCA/rootCA.pem
-  # (path printed by infra-bootstrap/02-mirror-registry-install.sh)
+%{ for line in split("\n", mirror_ca_cert) ~}
+  ${line}
+%{ endfor ~}
 pullSecret: '${pull_secret}'
 sshKey: '${ssh_key}'

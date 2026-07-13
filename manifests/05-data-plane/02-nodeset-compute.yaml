@@ -51,7 +51,7 @@ spec:
     ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
     managementNetwork: ctlplane
     ansible:
-      ansibleUser: cloud-admin   # CHANGE_ME
+      ansibleUser: __ANSIBLE_USER__
       ansiblePort: 22
       ansibleVarsFrom:
         - secretRef:
@@ -73,14 +73,15 @@ spec:
 
         # --- Networking: bonded pair + VLANs (matches terraform's var.bonding + manifests/02-networking/) ---
         edpm_network_config_nmstate: true
-        edpm_network_config_update: false   # CHANGE_ME to true only for the run right after editing the template below, then back to false
+        edpm_network_config_update: false   # true only for the run right after editing the template below, then back to false - not a configure.py setting, this is operational state you flip by hand
         edpm_network_config_hide_sensitive_logs: false
         # Maps the abstract nic1/nic2 used in the template below to THIS node's real MACs -
-        # matches terraform.tfvars.example's nodes[].nic1_mac/nic2_mac for compute-0.
+        # must be identical to terraform.tfvars's nodes[name="__COMPUTE_NODE_NAME__"].nic1_mac/nic2_mac
+        # (scripts/configure.py writes both from the same answer, so they can't drift).
         edpm_network_config_os_net_config_mappings:
-          compute-0:
-            nic1: "CHANGE_ME"   # same MAC as terraform nodes[name=compute-0].nic1_mac
-            nic2: "CHANGE_ME"   # same MAC as terraform nodes[name=compute-0].nic2_mac
+          __COMPUTE_NODE_NAME__:
+            nic1: "__COMPUTE_NODE_NIC1_MAC__"
+            nic2: "__COMPUTE_NODE_NIC2_MAC__"
         edpm_network_config_template: |
           ---
           {% set mtu_list = [ctlplane_mtu] %}
@@ -92,7 +93,7 @@ spec:
             - type: linux_bond
               name: bond0
               mtu: {{ min_viable_mtu }}
-              bonding_options: "mode=802.3ad miimon=140"   # CHANGE_ME to match terraform's var.bonding.mode
+              bonding_options: "mode=__BONDING_MODE__ miimon=140"
               use_dhcp: false
               dns_servers: {{ ctlplane_dns_nameservers }}
               domain: {{ dns_search_domains }}
@@ -114,17 +115,18 @@ spec:
                 - ip_netmask: {{ lookup('vars', networks_lower[network] ~ '_ip') }}/{{ lookup('vars', networks_lower[network] ~ '_cidr') }}
               routes: {{ lookup('vars', networks_lower[network] ~ '_host_routes') }}
             {% endfor %}
-            # Neutron/OVN provider ("external"/floating-IP) network bridge. A dedicated VLAN
-            # (30, CHANGE_ME) keeps this off the ctlplane/internalapi/storage/tenant VLANs; OVS
+            # Neutron/OVN provider ("external"/floating-IP) network bridge.
+            # A dedicated VLAN (__EXTERNAL_VLAN_ID__) keeps this off the ctlplane/internalapi/storage/tenant VLANs; OVS
             # (not a Linux bond) owns this bridge because OVN's chassis bridge-mapping
-            # (edpm_ovn_bridge_mappings below) needs an actual OVS bridge to map the `datacentre`
-            # physnet to. Without a real upstream router on this VLAN, floating IPs work for
-            # verifying the control-plane path (openstack floating ip create, SSH from other POC
-            # nodes on the same VLAN) but not true internet egress - see docs/troubleshooting.md #7.
+            # (edpm_ovn_bridge_mappings below) needs an actual OVS bridge to map the
+            # `__EXTERNAL_PHYSNET__` physnet to. Without a real upstream router on this VLAN,
+            # floating IPs work for verifying the control-plane path (openstack floating ip
+            # create, SSH from other POC nodes on the same VLAN) but not true internet egress -
+            # see docs/troubleshooting.md #7.
             - type: vlan
-              name: bond0.30
+              name: bond0.__EXTERNAL_VLAN_ID__
               mtu: {{ min_viable_mtu }}
-              vlan_id: 30
+              vlan_id: __EXTERNAL_VLAN_ID__
               device: bond0
               use_dhcp: false
             - type: ovs_bridge
@@ -133,9 +135,9 @@ spec:
               use_dhcp: false
               members:
                 - type: interface
-                  name: bond0.30
+                  name: bond0.__EXTERNAL_VLAN_ID__
         edpm_ovn_bridge_mappings:
-          - "datacentre:br-ex"
+          - "__EXTERNAL_PHYSNET__:br-ex"
 
         edpm_nodes_validation_validate_controllers_icmp: false
         edpm_nodes_validation_validate_gateway_icmp: false
@@ -143,23 +145,23 @@ spec:
         # --- Nova/libvirt direct Ceph RBD auth - MUST match cinder's rbd_secret_uuid in
         # manifests/04-control-plane/04-openstackcontrolplane.yaml exactly (generate once with
         # `uuidgen`, paste the same value in both places). ---
-        edpm_nova_libvirt_secret_uuid: "CHANGE_ME_UUID"
+        edpm_nova_libvirt_secret_uuid: "__CEPH_RBD_SECRET_UUID__"
   nodes:
-    compute-0:
-      hostName: compute-0   # CHANGE_ME
+    __COMPUTE_NODE_NAME__:
+      hostName: __COMPUTE_NODE_NAME__
       ansible:
-        ansibleHost: 10.10.10.50   # CHANGE_ME - must be inside 02-netconfig.yaml's ctlplane allocationRange (10.10.10.50-59)
+        ansibleHost: __COMPUTE_NODE_CTLPLANE_IP__   # must be inside 02-netconfig.yaml's ctlplane allocationRange (.50-.59)
       networks:
         - name: ctlplane
           subnetName: subnet1
           defaultRoute: true
-          fixedIP: 10.10.10.50   # CHANGE_ME
+          fixedIP: __COMPUTE_NODE_CTLPLANE_IP__
         - name: internalapi
           subnetName: subnet1
-          fixedIP: 172.17.0.100   # CHANGE_ME - inside 02-netconfig.yaml's internalapi range (.100-.250)
+          fixedIP: __COMPUTE_NODE_INTERNALAPI_IP__   # inside 02-netconfig.yaml's internalapi range (.100-.250)
         - name: storage
           subnetName: subnet1
-          fixedIP: 172.18.0.100   # CHANGE_ME
+          fixedIP: __COMPUTE_NODE_STORAGE_IP__
         - name: tenant
           subnetName: subnet1
-          fixedIP: 172.19.0.100   # CHANGE_ME
+          fixedIP: __COMPUTE_NODE_TENANT_IP__

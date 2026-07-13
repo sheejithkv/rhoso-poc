@@ -5,6 +5,14 @@ terraform/generated/
 *.tfstate.backup
 .terraform.lock.hcl
 
+# scripts/configure.py output - regenerate with the wizard, never commit
+.rhoso-poc-config.json
+.rhoso-poc-secrets.env
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
 # Windows NTFS "downloaded from the internet" metadata - never useful, never commit
 *:Zone.Identifier
 

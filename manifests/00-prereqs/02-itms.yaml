@@ -15,7 +15,7 @@ spec:
   imageTagMirrors:
     - source: registry.redhat.io/rhoso/openstack-must-gather-rhel9
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/rhoso/openstack-must-gather-rhel9
+        - __MIRROR_REGISTRY_HOST__:8443/rhoso/openstack-must-gather-rhel9
     - source: registry.redhat.io/rhceph/rhceph-7-rhel9
       mirrors:
-        - quay-mirror.CHANGE_ME.example.com:8443/rhceph/rhceph-7-rhel9
+        - __MIRROR_REGISTRY_HOST__:8443/rhceph/rhceph-7-rhel9

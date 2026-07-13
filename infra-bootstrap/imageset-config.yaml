@@ -1,7 +1,7 @@
 # WHAT: oc-mirror v2 input file. Lists exactly what gets pulled from Red Hat's registries and
 #       pushed to the mirror registry for Red Hat OpenShift (02-mirror-registry-install.sh).
 #       Run via: oc-mirror --v2 -c imageset-config.yaml --workspace file://./workspace \
-#                 docker://quay-mirror.CHANGE_ME.example.com:8443/mirror   (see 03-oc-mirror-run.sh)
+#                 docker://__MIRROR_REGISTRY_HOST__:8443/mirror   (see 03-oc-mirror-run.sh)
 #
 # Every operator listed here is a hard prerequisite somewhere else in this repo:
 #   - odf-operator                    -> manifests/01-storage-odf/  (ODF external mode)
