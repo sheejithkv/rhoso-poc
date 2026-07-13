@@ -1,0 +1,37 @@
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/generated/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+
+# Windows NTFS "downloaded from the internet" metadata - never useful, never commit
+*:Zone.Identifier
+
+# Generated secrets / credentials - these contain live passwords once rendered, never commit
+manifests/04-control-plane/02-osp-secret.yaml
+manifests/05-data-plane/*-secrets-rendered.yaml
+infra-bootstrap/mirror-auth.json
+infra-bootstrap/satellite-answers.yaml
+infra-bootstrap/*.pem
+infra-bootstrap/manifest_*.zip
+infra-bootstrap/workspace/
+infra-bootstrap/ceph-external-cluster-details-exporter.py
+infra-bootstrap/external-cluster-details.json
+manifests/01-storage-odf/ceph-external-cluster-details-exporter.py
+manifests/01-storage-odf/external-cluster-details.json
+manifests/02-networking/generated/
+terraform/generated/nodes/
+**/pull-secret.json
+**/mirror-ca.crt
+*.pem
+*.key
+id_rsa*
+!id_rsa*.pub.example
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*.bak
+.vscode/
+.idea/

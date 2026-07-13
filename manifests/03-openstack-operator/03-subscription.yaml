@@ -1,0 +1,21 @@
+# WHAT: Subscription to the openstack-operator (RHOSO 18.0 GA channel). OLM installs this,
+#       which in turn installs the ~20 service operators (keystone-operator, nova-operator,
+#       neutron-operator, cinder-operator, etc.) as its dependencies.
+# VERIFY: oc get csv -n openstack-operators
+#         oc get pods -n openstack-operators   # wait for all *-operator-controller-manager pods Running
+# ROLLBACK: oc delete subscription openstack-operator -n openstack-operators
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openstack-operator
+  namespace: openstack-operators
+spec:
+  channel: stable-v1.0        # CHANGE_ME - confirm exact channel name for RHOSO 18.0 in your catalog
+  name: openstack-operator
+  source: rhoso-mirror-catalog
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual # CHANGE-of-behavior: was Automatic. Manual is deliberate here, not
+  # just for consistency - openstack-operator installs ~20 dependent service operators as part of
+  # one InstallPlan, so on a first-time disconnected install it's worth reviewing that InstallPlan
+  # once (`oc get installplan -n openstack-operators`) before approving, to confirm every image it
+  # wants actually resolved through the mirror. See docs/troubleshooting.md #11 for the approve command.

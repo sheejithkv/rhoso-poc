@@ -1,0 +1,39 @@
+# WHAT: Namespace + OperatorGroup + Subscription for OpenShift Data Foundation (ODF), deployed
+#       in EXTERNAL mode. ODF *internal* mode (Ceph running as pods inside this OpenShift
+#       cluster, consuming worker local disks) is explicitly NOT a supported RHOSO 18.0
+#       configuration - see Red Hat's "Configuring persistent storage" guide: "The use of ODF in
+#       internal mode is not supported." External mode makes ODF a connector to the real,
+#       separately-managed Ceph cluster bootstrapped in infra-bootstrap/04-ceph-cluster-bootstrap.sh,
+#       and provides the ocs-external-storagecluster-ceph-rbd StorageClass that OpenShift-internal
+#       PVCs (Galera, RabbitMQ, OVN DB storage, etc.) use. Cinder/Glance/Nova get a SEPARATE,
+#       direct connection to the same Ceph cluster - see 04-control-plane/02-ceph-conf-secret.sh.
+# VERIFY: oc get csv -n openshift-storage
+#         oc get pods -n openshift-storage
+# ROLLBACK: oc delete subscription odf-operator -n openshift-storage
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-storage
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-storage-operatorgroup
+  namespace: openshift-storage
+spec:
+  targetNamespaces:
+    - openshift-storage
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: odf-operator
+  namespace: openshift-storage
+spec:
+  channel: stable-4.18
+  name: odf-operator
+  source: rhoso-mirror-catalog
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual # CHANGE-of-behavior: was Automatic - see docs/troubleshooting.md #11

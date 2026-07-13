@@ -1,0 +1,41 @@
+# WHAT: cert-manager Operator for Red Hat OpenShift. RHOSO 18.0 deploys with TLS-everywhere
+#       (TLS-e) ON by default - every service endpoint gets ingress TLS plus pod-level
+#       re-encryption, issued and renewed by cert-manager - and this is not something you can
+#       simply skip: the OpenStackControlPlane CR (04-control-plane/04-openstackcontrolplane.yaml)
+#       will not reach Ready without cert-manager's CRDs and controller present first. This
+#       manifest was previously missing entirely from the repo.
+# WHAT'S NOT HERE: this only installs the operator. It auto-creates its own `cert-manager`
+#       operand namespace and the cluster-wide `rootca-internal`/`rootca-public`/`rootca-ovn`/
+#       `rootca-libvirt` Issuers get created automatically by the openstack-operator when the
+#       control plane deploys - nothing to configure here for the POC's default self-signed CAs.
+# VERIFY: oc get csv -n cert-manager-operator
+#         oc get pods -n cert-manager-operator
+#         oc get pods -n cert-manager   # controller, cainjector, webhook - operand namespace, auto-created
+# ROLLBACK: oc delete subscription openshift-cert-manager-operator -n cert-manager-operator
+#           oc delete namespace cert-manager-operator cert-manager
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager-operator
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: cert-manager-operator
+  namespace: cert-manager-operator
+spec:
+  targetNamespaces:
+    - cert-manager-operator
+  upgradeStrategy: Default
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: openshift-cert-manager-operator
+  namespace: cert-manager-operator
+spec:
+  channel: stable-v1
+  name: openshift-cert-manager-operator
+  source: rhoso-mirror-catalog
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Manual # CHANGE-of-behavior: was Automatic everywhere in this repo - see docs/troubleshooting.md #11

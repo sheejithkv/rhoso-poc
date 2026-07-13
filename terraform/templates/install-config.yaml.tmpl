@@ -1,0 +1,42 @@
+apiVersion: v1
+baseDomain: ${base_domain}
+metadata:
+  name: ${cluster_name}
+networking:
+  networkType: OVNKubernetes
+  machineNetwork:
+    - cidr: ${machine_cidr}
+  clusterNetwork:
+    - cidr: 10.128.0.0/14
+      hostPrefix: 23
+  serviceNetwork:
+    - 172.30.0.0/16
+platform:
+  baremetal:
+    apiVIPs:
+      - ${api_vip}
+    ingressVIPs:
+      - ${ingress_vip}
+# imageContentSources here is the BOOTSTRAP-time mirror mapping - it is a different mechanism
+# from the post-install ImageDigestMirrorSet/ImageTagMirrorSet objects in
+# manifests/00-prereqs/01-idms.yaml + 02-itms.yaml. install-config.yaml is consumed once, before
+# the cluster exists, so the bootstrap process itself knows to pull from the mirror; the IDMS/
+# ITMS objects tell the running cluster the same thing afterwards. They must both point at the
+# same registry_host:registry_port or masters can bootstrap while later image pulls fail (or
+# vice versa) - this list should match manifests/00-prereqs/01-idms.yaml's `source:` entries.
+imageContentSources:
+  - source: quay.io/openstack-k8s-operators
+    mirrors:
+      - ${registry_host}:${registry_port}/openstack-k8s-operators
+  - source: registry.redhat.io/rhoso
+    mirrors:
+      - ${registry_host}:${registry_port}/rhoso
+  - source: registry.redhat.io/redhat/redhat-operator-index
+    mirrors:
+      - ${registry_host}:${registry_port}/redhat/redhat-operator-index
+additionalTrustBundle: |
+  # CHANGE_ME: paste the mirror registry's CA here, e.g.:
+  #   cat ~/quay-install/quay-rootCA/rootCA.pem
+  # (path printed by infra-bootstrap/02-mirror-registry-install.sh)
+pullSecret: '${pull_secret}'
+sshKey: '${ssh_key}'

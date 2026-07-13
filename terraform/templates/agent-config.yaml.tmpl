@@ -1,0 +1,53 @@
+apiVersion: v1beta1
+kind: AgentConfig
+metadata:
+  name: ${cluster_name}
+# FIXED: rendezvousIP must be one of the actual hosts' IPs (the master that temporarily runs
+# the assisted-service and coordinates bootstrap before rejoining as a normal master) - it is
+# NOT the network gateway. See main.tf's rendezvous_ip local (= first master's ip_address).
+rendezvousIP: ${rendezvous_ip}
+hosts:
+%{ for n in nodes ~}
+  - hostname: ${n.name}
+    role: ${n.role}
+    interfaces:
+      - name: ${bonding.member1_name}
+        macAddress: ${n.nic1_mac}
+      - name: ${bonding.member2_name}
+        macAddress: ${n.nic2_mac}
+    networkConfig:
+      interfaces:
+        - name: ${bonding.member1_name}
+          type: ethernet
+          state: up
+        - name: ${bonding.member2_name}
+          type: ethernet
+          state: up
+        - name: ${bonding.interface_name}
+          type: bond
+          state: up
+          link-aggregation:
+            mode: ${bonding.mode}
+            options:
+              miimon: '${bonding.miimon_ms}'
+            port:
+              - ${bonding.member1_name}
+              - ${bonding.member2_name}
+          ipv4:
+            enabled: true
+            dhcp: false
+            address:
+              - ip: ${n.ip_address}
+                prefix-length: ${prefix_length}
+      dns-resolver:
+        config:
+          server:
+%{ for d in dns_servers ~}
+            - ${d}
+%{ endfor ~}
+      routes:
+        config:
+          - destination: 0.0.0.0/0
+            next-hop-address: ${gateway}
+            next-hop-interface: ${bonding.interface_name}
+%{ endfor ~}

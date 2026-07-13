@@ -1,0 +1,19 @@
+# WHAT: Disconnected CatalogSource - points OLM at the mirrored redhat-operator-index image
+#       instead of the internet-hosted one, so OperatorHub can show ODF/NMState/MetalLB/
+#       openstack-operator in a disconnected cluster.
+# VERIFY: oc get catalogsource -n openshift-marketplace
+#         oc get pods -n openshift-marketplace | grep rhoso-mirror-catalog
+# ROLLBACK: oc delete catalogsource rhoso-mirror-catalog -n openshift-marketplace
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: rhoso-mirror-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay-mirror.CHANGE_ME.example.com:8443/redhat/redhat-operator-index:v4.18
+  displayName: "RHOSO Disconnected Mirror Catalog"
+  publisher: "CHANGE_ME - your org"
+  updateStrategy:
+    registryPoll:
+      interval: 30m

@@ -1,0 +1,33 @@
+# WHAT: oc-mirror v2 input file. Lists exactly what gets pulled from Red Hat's registries and
+#       pushed to the mirror registry for Red Hat OpenShift (02-mirror-registry-install.sh).
+#       Run via: oc-mirror --v2 -c imageset-config.yaml --workspace file://./workspace \
+#                 docker://quay-mirror.CHANGE_ME.example.com:8443/mirror   (see 03-oc-mirror-run.sh)
+#
+# Every operator listed here is a hard prerequisite somewhere else in this repo:
+#   - odf-operator                    -> manifests/01-storage-odf/  (ODF external mode)
+#   - kubernetes-nmstate-operator     -> manifests/02-networking/01-nmstate-sub.yaml
+#   - metallb-operator                -> manifests/02-networking/05-metallb-sub.yaml
+#   - openshift-cert-manager-operator -> manifests/00-prereqs/00-cert-manager-operator.yaml
+#   - openstack-operator              -> manifests/03-openstack-operator/03-subscription.yaml
+apiVersion: mirror.openshift.io/v2alpha1
+kind: ImageSetConfiguration
+mirror:
+  platform:
+    channels:
+      - name: stable-4.18            # CHANGE_ME if targeting a different OCP z-stream
+        type: ocp
+    graph: true                       # needed for the in-cluster OpenShift Update Service / Cincinnati graph
+  operators:
+    - catalog: registry.redhat.io/redhat/redhat-operator-index:v4.18
+      packages:
+        - name: odf-operator
+        - name: kubernetes-nmstate-operator
+        - name: metallb-operator
+        - name: openshift-cert-manager-operator
+        - name: openstack-operator
+        - name: local-storage-operator   # CHANGE_ME - remove if not using LSO anywhere
+  additionalImages:
+    # RHCEPH client tools image referenced by docs/troubleshooting.md's must-gather command,
+    # and the RHOSO must-gather image itself:
+    - name: registry.redhat.io/rhoso/openstack-must-gather-rhel9:18.0
+    - name: registry.redhat.io/rhceph/rhceph-7-rhel9:latest   # CHANGE_ME tag - pin to what cephadm bootstrap will request

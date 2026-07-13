@@ -1,0 +1,90 @@
+# WHAT: NetworkAttachmentDefinitions (Multus) - lets RHOSO control-plane pods (Galera,
+#       RabbitMQ, ovn-controller, etc.) and the data-plane Ansible execution pod attach to the
+#       isolated VLANs created by 03-generate-nncp.sh, instead of only the default pod network.
+# FIXED: `master` now points at `bond0.<vlan>` (created by 03-generate-nncp.sh on top of the
+#       bonded pair) instead of a bare single NIC `eno1.<vlan>` - the old value assumed an
+#       unbonded eno1 that no longer matches how the NNCPs build these VLANs.
+# ADDED: the `ctlplane` NAD, which was referenced by name in
+#       manifests/05-data-plane/02-nodeset-compute.yaml (`managementNetwork: ctlplane`) and by
+#       02-netconfig.yaml but never actually defined - the data-plane Ansible execution pod needs
+#       this to reach the external RHEL Compute node's ctlplane IP for SSH.
+# VERIFY: oc get network-attachment-definitions -n openstack
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: ctlplane
+  namespace: openstack
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "ctlplane",
+      "type": "macvlan",
+      "master": "bond0",
+      "ipam": {
+        "type": "whereabouts",
+        "range": "10.10.10.0/24",
+        "range_start": "10.10.10.30",
+        "range_end": "10.10.10.49"
+      }
+    }
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: internalapi
+  namespace: openstack
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "internalapi",
+      "type": "macvlan",
+      "master": "bond0.20",
+      "ipam": {
+        "type": "whereabouts",
+        "range": "172.17.0.0/24",
+        "range_start": "172.17.0.30",
+        "range_end": "172.17.0.70"
+      }
+    }
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: storage
+  namespace: openstack
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "storage",
+      "type": "macvlan",
+      "master": "bond0.21",
+      "ipam": {
+        "type": "whereabouts",
+        "range": "172.18.0.0/24",
+        "range_start": "172.18.0.30",
+        "range_end": "172.18.0.70"
+      }
+    }
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: tenant
+  namespace: openstack
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "tenant",
+      "type": "macvlan",
+      "master": "bond0.22",
+      "ipam": {
+        "type": "whereabouts",
+        "range": "172.19.0.0/24",
+        "range_start": "172.19.0.30",
+        "range_end": "172.19.0.70"
+      }
+    }

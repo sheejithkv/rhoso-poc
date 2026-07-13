@@ -1,0 +1,62 @@
+# Copy to terraform.tfvars and fill in every CHANGE_ME value.
+# NEVER commit terraform.tfvars (it can hold BMC credentials) - it is already in .gitignore.
+
+cluster_name       = "rhoso-poc"                # CHANGE_ME
+base_domain        = "CHANGE_ME.example.com"    # CHANGE_ME
+pull_secret_path   = "/home/CHANGE_ME/pull-secret.json"
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# "redfish" for real bare metal / a Redfish-capable bare-metal cloud (Equinix Metal, etc.)
+# "libvirt" to run everything as nested-virt KVM guests on one host, anywhere - the default,
+#           because it is the only mode that works with zero physical hardware on hand.
+# "vsphere" for an existing VMware private cloud.
+platform_mode = "libvirt"           # CHANGE_ME
+
+control_plane_count = 3
+worker_count         = 3
+
+bonding = {
+  interface_name = "bond0"
+  member1_name    = "eno1"          # CHANGE_ME - real interface name seen at boot (see variables.tf note)
+  member2_name    = "eno2"          # CHANGE_ME
+  mode            = "802.3ad"       # CHANGE_ME to "active-backup" if your switches don't do LACP
+  miimon_ms       = 140
+}
+
+# Two MACs per node -> bonded into bond0. For platform_mode = "libvirt" these can be any
+# locally-administered MACs (the 02:xx / "second bit set" range is conventional, e.g.
+# 52:54:00:xx:xx:xx which is QEMU/KVM's registered prefix) since libvirt creates the vNICs;
+# for "redfish" they must be the NICs' real burned-in MACs.
+nodes = [
+  { name = "master-0",  role = "master", ip_address = "10.10.10.11", nic1_mac = "52:54:00:a1:00:01", nic2_mac = "52:54:00:a2:00:01", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+  { name = "master-1",  role = "master", ip_address = "10.10.10.12", nic1_mac = "52:54:00:a1:00:02", nic2_mac = "52:54:00:a2:00:02", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+  { name = "master-2",  role = "master", ip_address = "10.10.10.13", nic1_mac = "52:54:00:a1:00:03", nic2_mac = "52:54:00:a2:00:03", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+  { name = "worker-0",  role = "worker", ip_address = "10.10.10.21", nic1_mac = "52:54:00:a1:00:04", nic2_mac = "52:54:00:a2:00:04", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+  { name = "worker-1",  role = "worker", ip_address = "10.10.10.22", nic1_mac = "52:54:00:a1:00:05", nic2_mac = "52:54:00:a2:00:05", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+  { name = "compute-0", role = "worker", ip_address = "10.10.10.23", nic1_mac = "52:54:00:a1:00:06", nic2_mac = "52:54:00:a2:00:06", bmc_address = "redfish-virtualmedia+https://CHANGE_ME/redfish/v1/Systems/1", bmc_username = "CHANGE_ME", bmc_password = "CHANGE_ME" },
+]
+
+network = {
+  machine_network_cidr = "10.10.10.0/24"   # CHANGE_ME
+  api_vip              = "10.10.10.5"      # CHANGE_ME
+  ingress_vip           = "10.10.10.6"      # CHANGE_ME
+  dns_servers           = ["10.10.10.1"]    # CHANGE_ME
+  ntp_servers           = ["10.10.10.1"]    # CHANGE_ME
+  gateway               = "10.10.10.1"      # CHANGE_ME
+}
+
+disconnected_registry = {
+  host         = "quay-mirror.CHANGE_ME.example.com"
+  port         = 8443
+  ca_cert_path = "/home/CHANGE_ME/quay-install/quay-rootCA/rootCA.pem"
+}
+
+# Only read when platform_mode = "libvirt":
+libvirt_uri             = "qemu:///system"       # or "qemu+ssh://user@libvirt-host/system" for remote
+libvirt_storage_pool    = "default"
+libvirt_network_bridge  = "br0"                   # CHANGE_ME - pre-existing bridge with real uplink
+
+# Only read when platform_mode = "vsphere":
+# vsphere_user     = "CHANGE_ME"
+# vsphere_password = "CHANGE_ME"
+# vsphere_server   = "CHANGE_ME"

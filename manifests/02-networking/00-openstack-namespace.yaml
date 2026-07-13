@@ -1,0 +1,19 @@
+# WHAT: Creates the `openstack` namespace early. FIXES A REAL ORDERING BUG: the original repo's
+#       scripts/02-deploy-networking.sh applied NetworkAttachmentDefinitions into namespace
+#       `openstack` (03/04-network-attachment-definitions.yaml), but that namespace was only
+#       created later, in scripts/03-deploy-openstack-operator.sh - so `oc apply` on the NADs
+#       would fail with "namespaces openstack not found" on a from-scratch run.
+#       03-openstack-operator/01-namespace.yaml still creates it too (needed for that phase to
+#       be independently re-runnable per the README) - both applies are idempotent so this is
+#       intentional duplication, not a bug; `openstack-operators` (the meta-operator's own
+#       namespace) is still only created there, since nothing needs it this early.
+# VERIFY: oc get ns openstack
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openstack
+  labels:
+    security.openshift.io/scc.podSecurityLabelSync: "true"
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

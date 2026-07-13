@@ -1,0 +1,227 @@
+# WHAT: OpenStackControlPlane CR - THE central CR. Deploys Keystone, Glance, Nova (API/
+#       conductor/scheduler), Neutron (OVN backend), Cinder (Ceph RBD backend, external cluster),
+#       Placement, Horizon, Heat, Octavia, Swift, Barbican, Telemetry (Ceilometer/Aodh/Prometheus),
+#       MariaDB/Galera, RabbitMQ, Memcached, OVN. Applying this triggers ~15-30 min of pod rollout
+#       depending on hardware.
+# CHANGED FROM ORIGINAL:
+#   - storageClass now ocs-external-storagecluster-ceph-rbd (was ocs-storagecluster-ceph-rbd -
+#     that StorageClass no longer exists, ODF now runs in external mode, see 01-storage-odf/)
+#   - cinder/glance/nova now mount the ceph-conf-files secret via extraMounts and use rbd_user=openstack
+#     against the EXTERNAL Ceph cluster directly, instead of assuming ODF's in-cluster RBD pool
+#   - barbican: section added (was mentioned only in a comment, never actually defined - the
+#     osp-secret already generated Barbican's DB password and KEK, so this closes a gap where a
+#     generated-but-unused secret would have sat there doing nothing)
+#   - telemetry: section added (Ceilometer/Aodh/Prometheus - RHOSO 18.0 enables Telemetry by
+#     default, but "enabled by default" only avoids a hard failure if the section is omitted; it
+#     still deploys with whatever defaults the operator picks, so this repo now sets it explicitly
+#     like every other service, with metricStorage sized for a POC)
+#   - TLS-e (TLS everywhere, cert-manager-issued certs on every endpoint) is left at its RHOSO
+#     18.0 default of enabled - see manifests/00-prereqs/00-cert-manager-operator.yaml. This repo
+#     does not attempt to disable it.
+# VERIFY: oc get openstackcontrolplane -n openstack
+#         oc get openstackcontrolplane openstack-control-plane -n openstack -o jsonpath='{.status.conditions}' | jq
+#         watch oc get pods -n openstack
+# ROLLBACK: oc delete openstackcontrolplane openstack-control-plane -n openstack
+apiVersion: core.openstack.org/v1beta1
+kind: OpenStackControlPlane
+metadata:
+  name: openstack-control-plane
+  namespace: openstack
+spec:
+  secret: osp-secret
+  storageClass: ocs-external-storagecluster-ceph-rbd   # CHANGE_ME if not using ODF external-mode RBD
+
+  # Distributes the external Ceph cluster's ceph.conf + client.openstack keyring
+  # (04-control-plane/03-ceph-conf-secret.sh) into Cinder/Glance/Nova pods that need direct RBD
+  # access, at /etc/ceph/ - matches the RHOSO-documented extraMounts pattern for Ceph integration.
+  extraMounts:
+    - name: ceph
+      region: r1
+      extraVol:
+        - propagation:
+            - CinderVolume
+            - CinderBackup
+            - Glance
+          extraVolType: Ceph
+          volumes:
+            - name: ceph
+              secret:
+                secretName: ceph-conf-files
+          mounts:
+            - name: ceph
+              mountPath: "/etc/ceph"
+              readOnly: true
+
+  keystone:
+    template:
+      databaseInstance: openstack
+      replicas: 1
+
+  galera:
+    templates:
+      openstack:
+        storageRequest: 5G
+        replicas: 1   # CHANGE_ME - 3 for HA, 1 for POC
+
+  rabbitmq:
+    templates:
+      rabbitmq:
+        replicas: 1   # CHANGE_ME - 3 for HA
+
+  memcached:
+    templates:
+      memcached:
+        replicas: 1
+
+  glance:
+    template:
+      databaseInstance: openstack
+      storageClass: ocs-external-storagecluster-ceph-rbd
+      storageRequest: 10G
+      glanceAPIs:
+        default:
+          replicas: 1
+          networkAttachments:
+            - storage
+          override:
+            service:
+              internal:
+                metadata:
+                  annotations: {}
+
+  cinder:
+    template:
+      databaseInstance: openstack
+      cinderAPI:
+        replicas: 1
+        networkAttachments:
+          - storage
+      cinderScheduler:
+        replicas: 1
+      cinderBackup:
+        replicas: 1
+        networkAttachments:
+          - storage
+        customServiceConfig: |
+          [DEFAULT]
+          backup_driver = cinder.backup.drivers.ceph.CephBackupDriver
+          backup_ceph_conf = /etc/ceph/ceph.conf
+          backup_ceph_pool = backups
+          backup_ceph_user = openstack
+      cinderVolumes:
+        ceph:                          # CHANGE_ME - backend name
+          replicas: 1
+          networkAttachments:
+            - storage
+          customServiceConfig: |
+            [ceph]
+            volume_backend_name=ceph
+            volume_driver=cinder.volume.drivers.rbd.RBDDriver
+            rbd_ceph_conf=/etc/ceph/ceph.conf
+            rbd_user=openstack             # matches infra-bootstrap/04-ceph-cluster-bootstrap.sh's client.openstack
+            rbd_pool=volumes               # CHANGE_ME - must exist on the external Ceph cluster
+            rbd_flatten_volume_from_snapshot=false
+            rbd_secret_uuid=CHANGE_ME_UUID # CHANGE_ME - generate once with `uuidgen`, then use the
+            # SAME value for edpm_nova_libvirt_secret_uuid in
+            # manifests/05-data-plane/02-nodeset-compute.yaml - Nova/libvirt on the Compute node
+            # authenticates to Ceph with this UUID when attaching a Cinder-created RBD volume to a VM.
+
+  nova:
+    template:
+      apiServiceTemplate:
+        replicas: 1
+      metadataServiceTemplate:
+        replicas: 1
+      schedulerServiceTemplate:
+        replicas: 1
+
+  placement:
+    template:
+      databaseInstance: openstack
+      replicas: 1
+
+  neutron:
+    template:
+      databaseInstance: openstack
+      replicas: 1
+      networkAttachments:
+        - internalapi
+
+  ovn:
+    template:
+      ovnDBCluster:
+        ovndbcluster-nb:
+          dbType: NB
+          storageRequest: 10G
+          networkAttachment: internalapi
+        ovndbcluster-sb:
+          dbType: SB
+          storageRequest: 10G
+          networkAttachment: internalapi
+      ovnController:
+        networkAttachment: tenant
+
+  horizon:
+    template:
+      replicas: 1
+
+  heat:
+    template:
+      databaseInstance: openstack
+      heatAPI:
+        replicas: 1
+      heatEngine:
+        replicas: 1
+
+  octavia:
+    template:
+      databaseInstance: openstack
+      octaviaAPI:
+        replicas: 1
+
+  swift:
+    enabled: false   # CHANGE_ME to true if object storage is required for the POC
+
+  # ADDED - was missing entirely. Key Manager is enabled by default in RHOSO 18.0 GA regardless,
+  # but leaving it unconfigured meant the osp-secret's BarbicanDatabasePassword/
+  # BarbicanSimpleCryptoKEK fields (already generated by 01-osp-secret-gen.sh) were unused.
+  barbican:
+    template:
+      databaseInstance: openstack
+      secret: osp-secret
+      barbicanAPI:
+        replicas: 1
+      barbicanWorker:
+        replicas: 1
+      barbicanKeystoneListener:
+        replicas: 1
+
+  # ADDED - was missing entirely. Ceilometer (metrics) + Aodh (alarming, needed for Heat
+  # autoscaling) + the Prometheus-backed metricStorage the RHOSO Operator manages.
+  telemetry:
+    enabled: true
+    template:
+      metricStorage:
+        enabled: true
+        dashboardsEnabled: true
+        dataplaneNetwork: ctlplane
+        networkAttachments:
+          - ctlplane
+        monitoringStack:
+          alertingEnabled: true
+          scrapeInterval: 30s
+          storage:
+            strategy: persistent
+            retention: 24h
+            persistent:
+              pvcStorageRequest: 5G   # CHANGE_ME - small for POC, size up for real use
+      autoscaling:
+        enabled: false   # CHANGE_ME to true once Heat autoscaling is actually needed for the POC
+        aodh:
+          databaseAccount: aodh
+          databaseInstance: openstack
+          secret: osp-secret
+          heatInstance: heat
+      ceilometer:
+        enabled: true
+        secret: osp-secret

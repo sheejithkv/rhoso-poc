@@ -1,0 +1,31 @@
+# WHAT: StorageCluster CR in EXTERNAL mode. This REPLACES the original internal-mode
+#       StorageCluster (which built a 3-node Ceph cluster out of worker local disks -
+#       unsupported for RHOSO 18.0, see 01-namespace-og-sub.yaml's comment). This one instead
+#       connects to the external Ceph cluster via the rook-ceph-external-cluster-details secret
+#       produced by 02-fetch-and-run-exporter.sh, and produces the SAME-shaped StorageClasses
+#       (ocs-external-storagecluster-ceph-rbd, ocs-external-storagecluster-cephfs) so nothing
+#       downstream that references a StorageClass by name needs to change - only the
+#       "ocs-storagecluster-*" prefix used elsewhere in this repo becomes "ocs-external-storagecluster-*".
+# PREREQ: 02-fetch-and-run-exporter.sh has been run and the rook-ceph-external-cluster-details
+#         secret exists in this namespace.
+# VERIFY: oc get storagecluster ocs-external-storagecluster -n openshift-storage -o jsonpath='{.status.phase}'
+#         oc get cephcluster -n openshift-storage    # HEALTH column should reach HEALTH_OK, EXTERNAL=true
+#         oc get storageclass | grep ocs-external
+# ROLLBACK: oc delete storagecluster ocs-external-storagecluster -n openshift-storage
+apiVersion: ocs.openshift.io/v1
+kind: StorageCluster
+metadata:
+  name: ocs-external-storagecluster
+  namespace: openshift-storage
+spec:
+  externalStorage:
+    enable: true
+  # Rook/ODF must not try to reconcile pools it doesn't own - the external Ceph cluster's admin
+  # (infra-bootstrap/04-ceph-cluster-bootstrap.sh) owns pool lifecycle, not this operator.
+  managedResources:
+    cephBlockPools:
+      reconcileStrategy: ignore
+    cephFilesystems:
+      reconcileStrategy: ignore
+    cephObjectStores:
+      reconcileStrategy: ignore

@@ -1,0 +1,29 @@
+# WHAT: ImageDigestMirrorSet - tells every OCP node to pull openstack-operator and RHOSO
+#       service images from your internal mirror instead of registry.redhat.io/quay.io.
+#       Required for disconnected installs. Apply BEFORE creating the openstack-operator subscription.
+# NOTE: this covers images referenced by DIGEST only. Anything pulled by TAG (e.g. a
+#       must-gather image, or a `:latest`) is silently NOT covered by an IDMS and needs the
+#       companion ImageTagMirrorSet in 02-itms.yaml - see infra-bootstrap/03-oc-mirror-run.sh for
+#       how oc-mirror v2 generates both files together from the same mirroring run so they never
+#       drift out of sync with each other.
+# VERIFY: oc get imagedigestmirrorset rhoso-mirror -o yaml
+#         oc get mcp -w   # wait for worker/master pools to finish rolling (config change)
+# ROLLBACK: oc delete imagedigestmirrorset rhoso-mirror
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: rhoso-mirror
+spec:
+  imageDigestMirrors:
+    - source: registry.redhat.io/rhoso
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/rhoso
+    - source: registry.redhat.io/openstack-kubernetes
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/openstack-kubernetes
+    - source: registry.redhat.io/rhceph
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/rhceph
+    - source: registry.redhat.io/redhat/redhat-operator-index
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/redhat/redhat-operator-index

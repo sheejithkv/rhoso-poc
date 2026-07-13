@@ -1,0 +1,165 @@
+# WHAT: OpenStackDataPlaneNodeSet - describes the external RHEL 9.4 bare-metal node(s) that
+#       will run Nova Compute + Neutron/OVN + Ceph client. The OpenStack Operator runs Ansible
+#       against these nodes via SSH to configure them (no image build required for POC, nodes are
+#       preProvisioned - the OS is already installed by whatever means you provisioned bare metal).
+# CHANGED FROM ORIGINAL:
+#   - `services:` now explicit (was omitted; the operator's own default list is fine, but this
+#     repo states it and adds `ceph-client` so the direct-Ceph-access design in
+#     manifests/04-control-plane/ actually gets its keyring onto this node)
+#   - RHEL version pinning added: rhc_release/rhc_repositories/edpm_bootstrap_release_version_package,
+#     sourced from Satellite via the subscription-manager/redhat-registry secrets
+#     (00-subscription-manager-secrets.sh) - previously this repo would have pulled whatever the
+#     latest RHEL 9 packages happened to be on the day you ran it, with no EUS pin, no
+#     RHOSO/RHCEPH channel enabled, and no registry credentials at all.
+#   - edpm_network_config_template now actually defines a network (was a bare comment placeholder)
+#     - a Linux bond (bond0) carrying InternalAPI/Storage/Tenant as VLANs, matching
+#     terraform/templates/agent-config.yaml.tmpl's OCP-side bonding and manifests/02-networking/'s
+#     NNCPs, plus an OVS bridge (br-ex) on a dedicated VLAN for the Neutron/OVN provider
+#     ("external"/floating-IP) network - see docs/troubleshooting.md #7 for the caveat on what
+#     this does and doesn't get you without real upstream routing.
+# VERIFY: oc get openstackdataplanenodeset -n openstack
+#         oc get openstackdataplanenodeset compute-nodeset -n openstack -o jsonpath='{.status.conditions}' | jq
+# ROLLBACK: oc delete openstackdataplanenodeset compute-nodeset -n openstack
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneNodeSet
+metadata:
+  name: compute-nodeset
+  namespace: openstack
+spec:
+  networkAttachments:
+    - ctlplane
+  preProvisioned: true
+  services:
+    - redhat            # subscription-manager/Satellite registration - see ansibleVars below
+    - bootstrap
+    - download-cache
+    - configure-network
+    - validate-network
+    - install-os
+    - ceph-client        # distributes /etc/ceph/{ceph.conf,keyring} from ceph-conf-files - direct RBD access for Nova
+    - configure-os
+    - ssh-known-hosts
+    - run-os
+    - reboot-os
+    - install-certs
+    - ovn
+    - neutron-metadata
+    - libvirt
+    - nova
+    - telemetry
+  nodeTemplate:
+    ansibleSSHPrivateKeySecret: dataplane-ansible-ssh-private-key-secret
+    managementNetwork: ctlplane
+    ansible:
+      ansibleUser: cloud-admin   # CHANGE_ME
+      ansiblePort: 22
+      ansibleVarsFrom:
+        - secretRef:
+            name: subscription-manager   # 00-subscription-manager-secrets.sh - Satellite activation key
+        - secretRef:
+            name: redhat-registry        # 00-subscription-manager-secrets.sh - mirror registry pull creds
+      ansibleVars:
+        # --- RHEL 9.4 EUS pinning via Satellite (infra-bootstrap/01-satellite-content.sh) ---
+        rhc_release: "9.4"
+        rhc_repositories:
+          - { name: "*", state: disabled }
+          - { name: "rhel-9-for-x86_64-baseos-eus-rpms", state: enabled }
+          - { name: "rhel-9-for-x86_64-appstream-eus-rpms", state: enabled }
+          - { name: "rhel-9-for-x86_64-highavailability-eus-rpms", state: enabled }
+          - { name: "fast-datapath-for-rhel-9-x86_64-rpms", state: enabled }
+          - { name: "rhoso-18.0-for-rhel-9-x86_64-rpms", state: enabled }
+          - { name: "rhceph-7-tools-for-rhel-9-x86_64-rpms", state: enabled }
+        edpm_bootstrap_release_version_package: []
+
+        # --- Networking: bonded pair + VLANs (matches terraform's var.bonding + manifests/02-networking/) ---
+        edpm_network_config_nmstate: true
+        edpm_network_config_update: false   # CHANGE_ME to true only for the run right after editing the template below, then back to false
+        edpm_network_config_hide_sensitive_logs: false
+        # Maps the abstract nic1/nic2 used in the template below to THIS node's real MACs -
+        # matches terraform.tfvars.example's nodes[].nic1_mac/nic2_mac for compute-0.
+        edpm_network_config_os_net_config_mappings:
+          compute-0:
+            nic1: "CHANGE_ME"   # same MAC as terraform nodes[name=compute-0].nic1_mac
+            nic2: "CHANGE_ME"   # same MAC as terraform nodes[name=compute-0].nic2_mac
+        edpm_network_config_template: |
+          ---
+          {% set mtu_list = [ctlplane_mtu] %}
+          {% for network in nodeset_networks %}
+          {%- set _ = mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) %}
+          {%- endfor %}
+          {% set min_viable_mtu = mtu_list | max %}
+          network_config:
+            - type: linux_bond
+              name: bond0
+              mtu: {{ min_viable_mtu }}
+              bonding_options: "mode=802.3ad miimon=140"   # CHANGE_ME to match terraform's var.bonding.mode
+              use_dhcp: false
+              dns_servers: {{ ctlplane_dns_nameservers }}
+              domain: {{ dns_search_domains }}
+              addresses:
+                - ip_netmask: {{ ctlplane_ip }}/{{ ctlplane_cidr }}
+              routes: {{ ctlplane_host_routes }}
+              members:
+                - type: interface
+                  name: nic1
+                  primary: true
+                - type: interface
+                  name: nic2
+            {% for network in nodeset_networks %}
+            - type: vlan
+              mtu: {{ lookup('vars', networks_lower[network] ~ '_mtu') }}
+              vlan_id: {{ lookup('vars', networks_lower[network] ~ '_vlan_id') }}
+              device: bond0
+              addresses:
+                - ip_netmask: {{ lookup('vars', networks_lower[network] ~ '_ip') }}/{{ lookup('vars', networks_lower[network] ~ '_cidr') }}
+              routes: {{ lookup('vars', networks_lower[network] ~ '_host_routes') }}
+            {% endfor %}
+            # Neutron/OVN provider ("external"/floating-IP) network bridge. A dedicated VLAN
+            # (30, CHANGE_ME) keeps this off the ctlplane/internalapi/storage/tenant VLANs; OVS
+            # (not a Linux bond) owns this bridge because OVN's chassis bridge-mapping
+            # (edpm_ovn_bridge_mappings below) needs an actual OVS bridge to map the `datacentre`
+            # physnet to. Without a real upstream router on this VLAN, floating IPs work for
+            # verifying the control-plane path (openstack floating ip create, SSH from other POC
+            # nodes on the same VLAN) but not true internet egress - see docs/troubleshooting.md #7.
+            - type: vlan
+              name: bond0.30
+              mtu: {{ min_viable_mtu }}
+              vlan_id: 30
+              device: bond0
+              use_dhcp: false
+            - type: ovs_bridge
+              name: br-ex
+              mtu: {{ min_viable_mtu }}
+              use_dhcp: false
+              members:
+                - type: interface
+                  name: bond0.30
+        edpm_ovn_bridge_mappings:
+          - "datacentre:br-ex"
+
+        edpm_nodes_validation_validate_controllers_icmp: false
+        edpm_nodes_validation_validate_gateway_icmp: false
+
+        # --- Nova/libvirt direct Ceph RBD auth - MUST match cinder's rbd_secret_uuid in
+        # manifests/04-control-plane/04-openstackcontrolplane.yaml exactly (generate once with
+        # `uuidgen`, paste the same value in both places). ---
+        edpm_nova_libvirt_secret_uuid: "CHANGE_ME_UUID"
+  nodes:
+    compute-0:
+      hostName: compute-0   # CHANGE_ME
+      ansible:
+        ansibleHost: 10.10.10.50   # CHANGE_ME - must be inside 02-netconfig.yaml's ctlplane allocationRange (10.10.10.50-59)
+      networks:
+        - name: ctlplane
+          subnetName: subnet1
+          defaultRoute: true
+          fixedIP: 10.10.10.50   # CHANGE_ME
+        - name: internalapi
+          subnetName: subnet1
+          fixedIP: 172.17.0.100   # CHANGE_ME - inside 02-netconfig.yaml's internalapi range (.100-.250)
+        - name: storage
+          subnetName: subnet1
+          fixedIP: 172.18.0.100   # CHANGE_ME
+        - name: tenant
+          subnetName: subnet1
+          fixedIP: 172.19.0.100   # CHANGE_ME

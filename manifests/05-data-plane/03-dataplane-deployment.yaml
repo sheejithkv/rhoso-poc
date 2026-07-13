@@ -1,0 +1,15 @@
+# WHAT: OpenStackDataPlaneDeployment - actually triggers the Ansible run against the NodeSet
+#       above (install packages, configure OVS/OVN, libvirt, nova-compute, register with
+#       control plane). Apply AFTER the OpenStackControlPlane is Ready.
+# VERIFY: oc get openstackdataplanedeployment -n openstack
+#         oc logs -n openstack -l app=openstackansibleee -f   # tail the Ansible job logs
+#         oc get openstackdataplanedeployment compute-deploy -n openstack -o jsonpath='{.status.conditions}' | jq
+# ROLLBACK: oc delete openstackdataplanedeployment compute-deploy -n openstack
+apiVersion: dataplane.openstack.org/v1beta1
+kind: OpenStackDataPlaneDeployment
+metadata:
+  name: compute-deploy
+  namespace: openstack
+spec:
+  nodeSets:
+    - compute-nodeset

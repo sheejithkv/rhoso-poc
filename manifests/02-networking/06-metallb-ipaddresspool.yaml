@@ -1,0 +1,24 @@
+# WHAT: IPAddressPool + L2Advertisement - the actual VIP range MetalLB hands out for RHOSO
+#       public endpoints (Keystone public URL, Horizon, etc.). Range matches the IP plan
+#       documented in 02-netconfig.yaml's header comment (10.10.10.80-90) - kept disjoint from
+#       node static IPs, the ctlplane NAD whereabouts range, and DHCP.
+# VERIFY: oc get ipaddresspool -n metallb-system
+#         oc get l2advertisement -n metallb-system
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: osp-public-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.10.10.80-10.10.10.90   # CHANGE_ME
+  autoAssign: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: osp-public-l2
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - osp-public-pool

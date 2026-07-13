@@ -1,0 +1,65 @@
+# WHAT: NetConfig CR - defines the IPAM (subnets + allocation ranges) for every RHOSO isolated
+#       network. This CRD was ENTIRELY MISSING from the original repo, even though
+#       05-data-plane/02-nodeset-compute.yaml already referenced `managementNetwork: ctlplane`
+#       and `networks: [ctlplane, internalapi, storage, tenant]` - without a NetConfig defining
+#       those network/subnet names, the OpenStackDataPlaneNodeSet CR fails validation outright
+#       (its `networks[].name`/`subnetName` fields are foreign-key-style references into this
+#       object, not free-form strings).
+#
+# IP PLAN for this POC (all inside the ranges already used elsewhere in this repo - keep these
+# four ranges and manifests/02-networking's NAD whereabouts ranges, MetalLB's pool, and
+# terraform's per-node static IPs mutually disjoint if you change any of them):
+#   ctlplane    10.10.10.0/24   - same L2 as the OCP machine network for this POC (a real/scaled
+#                                  deployment usually keeps this on its own dedicated network -
+#                                  collapsing it here is a deliberate POC simplification).
+#                                  .1=gw .5/.6=API/Ingress VIP .11-19=masters .21-29=workers
+#                                  .30-49=free .50-59=EDPM ctlplane IPs .80-90=MetalLB pool
+#   internalapi 172.17.0.0/24   vlan 20   .30-70=NAD whereabouts (pods)  .100-250=NetConfig (EDPM)
+#   storage     172.18.0.0/24   vlan 21   .30-70=NAD whereabouts (pods)  .100-250=NetConfig (EDPM)
+#   tenant      172.19.0.0/24   vlan 22   .30-70=NAD whereabouts (pods)  .100-250=NetConfig (EDPM)
+# VERIFY: oc get netconfig -n openstack
+#         oc get netconfig netconfig -n openstack -o yaml
+# ROLLBACK: oc delete netconfig netconfig -n openstack
+apiVersion: network.openstack.org/v1beta1
+kind: NetConfig
+metadata:
+  name: netconfig
+  namespace: openstack
+spec:
+  networks:
+    - name: ctlplane
+      dnsDomain: ctlplane.CHANGE_ME.example.com
+      subnets:
+        - name: subnet1
+          cidr: 10.10.10.0/24     # CHANGE_ME - must match terraform's network.machine_network_cidr
+          gateway: 10.10.10.1      # CHANGE_ME
+          allocationRanges:
+            - start: 10.10.10.50
+              end: 10.10.10.59
+    - name: internalapi
+      dnsDomain: internalapi.CHANGE_ME.example.com
+      subnets:
+        - name: subnet1
+          cidr: 172.17.0.0/24
+          vlan: 20
+          allocationRanges:
+            - start: 172.17.0.100
+              end: 172.17.0.250
+    - name: storage
+      dnsDomain: storage.CHANGE_ME.example.com
+      subnets:
+        - name: subnet1
+          cidr: 172.18.0.0/24
+          vlan: 21
+          allocationRanges:
+            - start: 172.18.0.100
+              end: 172.18.0.250
+    - name: tenant
+      dnsDomain: tenant.CHANGE_ME.example.com
+      subnets:
+        - name: subnet1
+          cidr: 172.19.0.0/24
+          vlan: 22
+          allocationRanges:
+            - start: 172.19.0.100
+              end: 172.19.0.250

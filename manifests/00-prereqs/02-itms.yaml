@@ -1,0 +1,21 @@
+# WHAT: ImageTagMirrorSet - the companion to 01-idms.yaml for images referenced by TAG rather
+#       than digest. oc-mirror v2 generates an ITMS automatically whenever at least one image in
+#       the mirrored set uses a tag reference (see infra-bootstrap/imageset-config.yaml's
+#       additionalImages: openstack-must-gather-rhel9:18.0 and rhceph-7-rhel9:latest are both
+#       tag references) - without this file those specific pulls fall through to the internet
+#       and fail closed in a disconnected cluster, even with 01-idms.yaml correctly applied.
+#       This was entirely missing from the original repo.
+# VERIFY: oc get imagetagmirrorset rhoso-mirror -o yaml
+# ROLLBACK: oc delete imagetagmirrorset rhoso-mirror
+apiVersion: config.openshift.io/v1
+kind: ImageTagMirrorSet
+metadata:
+  name: rhoso-mirror
+spec:
+  imageTagMirrors:
+    - source: registry.redhat.io/rhoso/openstack-must-gather-rhel9
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/rhoso/openstack-must-gather-rhel9
+    - source: registry.redhat.io/rhceph/rhceph-7-rhel9
+      mirrors:
+        - quay-mirror.CHANGE_ME.example.com:8443/rhceph/rhceph-7-rhel9

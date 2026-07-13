@@ -1,0 +1,12 @@
+# WHAT: openstack-operators namespace - hosts the meta-operator (openstack-operator) that
+#       installs and lifecycles all RHOSO service operators (keystone, nova, neutron, etc.).
+# VERIFY: oc get ns openstack-operators
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openstack-operators
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openstack
