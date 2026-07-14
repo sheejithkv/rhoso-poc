@@ -12,6 +12,19 @@ for supportability (e.g. 3 control plane nodes), that minimum is kept even in th
 
 In order. Cross-reference `docs/troubleshooting.md` by number if one hangs.
 
+# HW requirement
+
+| Component | Count | vCPU | RAM | Disk |
+|---|---|---|---|---|
+| Control plane (master) | 3 | 8 | 32 GB | 120 GB |
+| Worker | 3 | 16 | 64 GB | 250 GB |
+| Satellite | 1 | 4 | 32 GB | 300 GB |
+| Mirror registry | 1 | 2 | 8 GB | 300–500 GB |
+| External Ceph | 1+ | 8 | 32 GB | 200 GB+ (raw block device) |
+| **Total, single host** | 6 OCP nodes | **72** | **288 GB** | **~1.1 TB** |
+
+Every OCP node: 2 NICs, bonded. Worker designated as Compute: nested virtualization (VT-x/AMD-V) required.
+
 ## Configuration (one-time, before anything installs)
 
 1. `python3 scripts/configure.py` — writes `terraform.tfvars`, `.rhoso-poc-secrets.env`, substitutes every `__TOKEN__`
