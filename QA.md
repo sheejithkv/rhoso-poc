@@ -206,12 +206,17 @@ first.
 Five operators, installed in this order:
 
 1. **cert-manager** — RHOSO 18 ships TLS-everywhere by default; needed to issue/rotate certs for every service endpoint
-2. **NMState** — manages the NNCPs (bonding + VLANs) at the OS level, post-install
+2. **NMState** — manages the NNCPs (bonding + VLANs) at the OS level, post-install 
 3. **MetalLB** — bare metal has no cloud load balancer; provides the VIP pool for RHOSO service endpoints (Keystone public URL, Horizon, etc.)
 4. **ODF** (external mode) — provides the StorageClass for OpenShift-internal PVCs (Galera, RabbitMQ, OVN DB), backed by the external Ceph cluster
 5. **openstack-operator** — the meta-operator; deploys and manages all ~20 RHOSO services (Keystone, Nova, Neutron+OVN, Cinder, Barbican, Telemetry, etc.)
 
 Each is a hard dependency for something specific — skip cert-manager and the control plane CR never goes Ready; skip MetalLB and no service gets a reachable IP; skip NMState and the bonding we just discussed doesn't apply.
+Note: 
+**NMState** — a declarative network management project (upstream of Red Hat's kubernetes-nmstate operator). You describe the network state you *want* (a YAML doc: this interface, this bond, this VLAN, this IP), and it makes the node's actual config match — instead of you running `nmcli`/`ip link` commands by hand on every node.
+**NNCP** = NodeNetworkConfigurationPolicy — the actual Kubernetes CR you write to do that. One NNCP = "this is the desired network state for these nodes." The NMState operator watches for NNCPs, applies them via NetworkManager on the matching nodes, and reports back per-node status through a companion object (NNCE — NodeNetworkConfigurationEnactment).
+
+In this repo specifically: each node gets its own generated NNCP declaring `bond0` (the two physical NICs) plus VLAN sub-interfaces on top for InternalAPI/Storage/Tenant — that's the "post-install, ongoing" bonding layer from a couple messages back.
 
 ---
 
