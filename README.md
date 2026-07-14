@@ -288,3 +288,29 @@ Troubleshooting for every failure class this repo has hit — operator install, 
 storage class, MetalLB/LB, DNS, cert-manager/TLS, Manual InstallPlan approval, Nova compute not
 joining, Neutron/OVN + provider network, image upload, VM boot failure, Satellite registration,
 and bonding/NNCP — is in `docs/troubleshooting.md` (13 sections).
+
+# 9. Enabled openstack services
+| # | Service | Operator | RHOSO default | This POC's CR |
+|---|---|---|---|---|
+| 1 | Bare Metal Provisioning (ironic) | `ironic-operator` | Disabled | Not used |
+| 2 | Bare Metal Provisioning (helper) | `openstack-baremetal-operator` | Enabled | Not used directly |
+| 3 | Block Storage (cinder) | `cinder-operator` | Enabled | Enabled |
+| 4 | Compute (nova) | `nova-operator` | Enabled | Enabled |
+| 5 | Dashboard (horizon) | `horizon-operator` | Disabled | Enabled ← deviates |
+| 6 | DNS (designate) | `designate-operator` | Disabled | Not used |
+| 7 | Identity (keystone) | `keystone-operator` | Enabled | Enabled |
+| 8 | Image (glance) | `glance-operator` | Enabled | Enabled |
+| 9 | Key Management (barbican) | `barbican-operator` | Enabled | Enabled |
+| 10 | Load Balancing (octavia) | `octavia-operator` | Disabled | Enabled ← deviates |
+| 11 | MariaDB | `mariadb-operator` | Enabled | Enabled (Galera) |
+| 12 | Memcached | `infra-operator` | Enabled | Enabled |
+| 13 | Networking (neutron) | `neutron-operator` | Enabled | Enabled |
+| 14 | Object Storage (swift) | `swift-operator` | Enabled | Disabled ← deviates |
+| 15 | OVN | `ovn-operator` | Enabled | Enabled |
+| 16 | Orchestration (heat) | `heat-operator` | Disabled | Enabled ← deviates |
+| 17 | Placement | `placement-operator` | Enabled | Enabled |
+| 18 | RabbitMQ | `rabbitmq-cluster-operator` | Enabled | Enabled |
+| 19 | Shared File Systems (manila) | `manila-operator` | Disabled | Not used |
+| 20 | Telemetry (ceilometer, prometheus) | `telemetry-operator` | Enabled | Enabled |
+
+Source: [RHOSO 18.0 service Operators table](https://docs.redhat.com/en/documentation/red_hat_openstack_services_on_openshift/18.0/html/planning_your_deployment/assembly_red-hat-openstack-services-on-openshift-overview#con_rhoso-service-Operators_rhoso-overview)
