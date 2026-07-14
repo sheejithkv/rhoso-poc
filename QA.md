@@ -216,6 +216,7 @@ Each is a hard dependency for something specific — skip cert-manager and the c
 
 Note: 
 **NMState** — a declarative network management project (upstream of Red Hat's kubernetes-nmstate operator). You describe the network state you *want* (a YAML doc: this interface, this bond, this VLAN, this IP), and it makes the node's actual config match — instead of you running `nmcli`/`ip link` commands by hand on every node.
+
 **NNCP** = NodeNetworkConfigurationPolicy — the actual Kubernetes CR you write to do that. One NNCP = "this is the desired network state for these nodes." The NMState operator watches for NNCPs, applies them via NetworkManager on the matching nodes, and reports back per-node status through a companion object (NNCE — NodeNetworkConfigurationEnactment).
 
 In this repo specifically: each node gets its own generated NNCP declaring `bond0` (the two physical NICs) plus VLAN sub-interfaces on top for InternalAPI/Storage/Tenant — that's the "post-install, ongoing" bonding layer from a couple messages back.
