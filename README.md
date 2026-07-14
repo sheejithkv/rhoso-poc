@@ -8,9 +8,35 @@ every node.
 This is a POC procedure, not a production sizing/HA guide. Where Red Hat requires more nodes
 for supportability (e.g. 3 control plane nodes), that minimum is kept even in the POC.
 
-> **If you reviewed an earlier version of this repo:** see `CHANGELOG.md` for the full list of
-> what changed and why — every fix maps back to a specific, concrete problem (a bug, a missing
-> file, or an unsupported configuration), not a rewrite for its own sake.
+Configuration (one-time, before anything installs)
+
+python3 scripts/configure.py — writes terraform.tfvars, .rhoso-poc-secrets.env, substitutes every __TOKEN__
+
+Phase −1 — Pre-provisioning infra (infra-bootstrap/)
+
+00-satellite-install.sh → Satellite installed
+01-satellite-content.sh → org, repos, activation key ready
+02-mirror-registry-install.sh → mirror registry installed
+03-oc-mirror-run.sh → registry populated, IDMS/ITMS generated
+04-ceph-cluster-bootstrap.sh → external Ceph cluster ready
+
+Phase 0 — Nodes + OpenShift install (terraform/)
+
+terraform init && terraform apply → nodes provisioned, bonded NICs up
+openshift-install agent create image → boot ISO built
+openshift-install agent wait-for bootstrap-complete
+openshift-install agent wait-for install-complete → OpenShift cluster is up
+
+Phase 1–7 — RHOSO deployment (scripts/deploy-all.sh, or run individually)
+
+00-prereqs-check.sh → IDMS/ITMS/CatalogSource + pull secret + cert-manager installed
+01-deploy-storage.sh → ODF (external mode) connected to Ceph
+02-deploy-networking.sh → NetConfig + bonded NNCPs + NAD + MetalLB ready
+03-deploy-openstack-operator.sh → openstack-operator + ~20 service operators running
+04-deploy-control-plane.sh → RHOSO control plane Ready (Keystone/Nova/Neutron/Cinder/Barbican/Telemetry/...)
+05-deploy-data-plane.sh → Compute node registered + deployed (Nova/OVN/libvirt/Ceph client live)
+06-create-provider-network.sh → floating-IP network ready
+07-smoke-test.sh → VM + floating IP + SSH verified → POC complete
 
 ---
 
