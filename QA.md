@@ -202,6 +202,18 @@ first.
 </details>
 
 ---
+## what are the operators we installed, and why we need it
+Five operators, installed in this order:
+
+1. **cert-manager** — RHOSO 18 ships TLS-everywhere by default; needed to issue/rotate certs for every service endpoint
+2. **NMState** — manages the NNCPs (bonding + VLANs) at the OS level, post-install
+3. **MetalLB** — bare metal has no cloud load balancer; provides the VIP pool for RHOSO service endpoints (Keystone public URL, Horizon, etc.)
+4. **ODF** (external mode) — provides the StorageClass for OpenShift-internal PVCs (Galera, RabbitMQ, OVN DB), backed by the external Ceph cluster
+5. **openstack-operator** — the meta-operator; deploys and manages all ~20 RHOSO services (Keystone, Nova, Neutron+OVN, Cinder, Barbican, Telemetry, etc.)
+
+Each is a hard dependency for something specific — skip cert-manager and the control plane CR never goes Ready; skip MetalLB and no service gets a reachable IP; skip NMState and the bonding we just discussed doesn't apply.
+
+---
 
 ## Architecture decisions
 
